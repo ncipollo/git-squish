@@ -5,3 +5,4 @@ edition = "2024"
 publish = ["cargo-store"]
 
 [dependencies]
+git2 = "0.19"
