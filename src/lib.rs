@@ -1,4 +1,5 @@
-use git2::{Commit, RebaseOptions, Repository};
+use git2::{Commit, Config, RebaseOptions, Repository};
+use git2_ext::ops::{Sign, UserSign};
 
 mod error;
 pub use error::SquishError;
@@ -68,17 +69,24 @@ pub fn squash_branch(
     //     of included commits (optional, tweak as you like).
     let message = build_squash_message(&repo, &upstream_parent, &rebased_tip)?;
 
+    // Get git config and configuration for optional GPG signing
+    let git_config = Config::open_default()?;
+    let user_sign = UserSign::from_config(&repo, &git_config).ok();
+    let signing = user_sign.as_ref().map(|sign| sign as &dyn Sign);
+
     // Create a *new* commit that has:
     //   - the exact tree of the rebased tip (i.e., all changes combined)
     //   - a single parent: the upstream base
     //   - but don't update the branch ref yet (do it manually afterward)
-    let new_commit_id = repo.commit(
-        None, // Don't update any reference yet
+    //   - optionally signed with GPG if configured
+    let new_commit_id = git2_ext::ops::commit(
+        &repo,
         &sig, // author
         &sig, // committer
         &message,
         &rebased_tree,
         &[&upstream_parent],
+        signing,
     )?;
 
     // Now manually update the branch reference to point to our new squashed commit

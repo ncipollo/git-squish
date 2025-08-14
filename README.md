@@ -26,3 +26,7 @@ git squish topic main
 
 - `[branch-refname]` - Optional. The branch to squash (e.g., "refs/heads/feature"). If omitted, uses the current branch.
 - `<upstream-spec>` - Required. The upstream to rebase onto (e.g., "main" or "origin/main").
+
+## GPG Signing Support
+
+git-squish will respect your existing Git GPG signing configuration. If you have GPG signing enabled in your Git config, the squashed commit will be signed automatically.
