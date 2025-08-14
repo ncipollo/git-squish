@@ -127,8 +127,9 @@ pub fn get_current_branch_name(repo: &Repository) -> Result<String, SquishError>
     }
 }
 
-/// Build a human-friendly squash message from the rebased range.
-/// This scans commits reachable from `rebased_tip` back to (but excluding) `upstream_parent`.
+/// Build a squash message using the message from the first commit.
+/// This scans commits reachable from `rebased_tip` back to (but excluding) `upstream_parent`
+/// and returns the full message from the first (oldest) commit.
 fn build_squash_message(
     repo: &Repository,
     upstream_parent: &Commit,
@@ -140,27 +141,20 @@ fn build_squash_message(
     revwalk.hide(upstream_parent.id())?;
     revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::REVERSE)?;
 
-    let mut subjects: Vec<String> = Vec::new();
-    for oid in revwalk {
-        let oid = oid?;
-        let c = repo.find_commit(oid)?;
-        let s = c.summary().unwrap_or("(no subject)").to_owned();
-        subjects.push(format!("* {}", s));
-    }
-
-    let title = if let Some(first) = subjects.first().cloned() {
-        // Strip the leading bullet for the title line.
-        first.trim_start_matches("* ").to_string()
+    // Get the first commit in the range
+    if let Some(first_oid) = revwalk.next() {
+        let first_oid = first_oid?;
+        let first_commit = repo.find_commit(first_oid)?;
+        // Return the full message from the first commit
+        first_commit
+            .message()
+            .ok_or_else(|| SquishError::Other {
+                message: "First commit has no message".to_string(),
+            })
+            .map(|msg| msg.to_string())
     } else {
-        "Squashed commit".to_string()
-    };
-
-    let mut msg = String::new();
-    msg.push_str(&title);
-    msg.push_str("\n\nSquashed commits:\n");
-    for s in subjects {
-        msg.push_str(&s);
-        msg.push('\n');
+        Err(SquishError::Other {
+            message: "No commits found in the range to squash".to_string(),
+        })
     }
-    Ok(msg)
 }
