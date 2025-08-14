@@ -5,14 +5,35 @@ use git2::{
 /// Rebase `branch_refname` onto `upstream_spec` (e.g. "main" or "origin/main"),
 /// then replace the branch history with a **single squashed commit**.
 fn main() -> Result<(), Error> {
-    // args: <repo-path> <branch-refname> <upstream-spec>
-    // ex:   .            refs/heads/feature  origin/main
-    let mut args = std::env::args().skip(1);
-    let repo_path = args.next().unwrap_or_else(|| ".".into());
-    let branch_refname = args.next().expect("branch refname, e.g. refs/heads/feature");
-    let upstream_spec = args.next().expect("upstream spec, e.g. origin/main");
-
+    // args: [branch-refname] <upstream-spec>
+    // ex:   refs/heads/feature  origin/main
+    // ex:   origin/main         (uses current branch)
+    let args = std::env::args().skip(1);
+    let repo_path = ".";
+    
     let repo = Repository::open(repo_path)?;
+    
+    // Determine branch and upstream from remaining args
+    let remaining_args: Vec<String> = args.collect();
+    let (branch_refname, upstream_spec) = match remaining_args.len() {
+        1 => {
+            // Only upstream specified, use current branch
+            let current_branch = get_current_branch_name(&repo)?;
+            (current_branch, remaining_args[0].clone())
+        }
+        2 => {
+            // Both branch and upstream specified
+            (remaining_args[0].clone(), remaining_args[1].clone())
+        }
+        _ => {
+            eprintln!("Usage: git-squish [branch-refname] <upstream-spec>");
+            eprintln!("  If branch-refname is omitted, uses the current branch");
+            eprintln!("Examples:");
+            eprintln!("  git-squish refs/heads/feature origin/main");
+            eprintln!("  git-squish origin/main  # uses current branch");
+            std::process::exit(1);
+        }
+    };
 
     // Resolve the branch head to an AnnotatedCommit.
     let branch_ref = repo.find_reference(&branch_refname)?;
@@ -63,15 +84,19 @@ fn main() -> Result<(), Error> {
     // Create a *new* commit that has:
     //   - the exact tree of the rebased tip (i.e., all changes combined)
     //   - a single parent: the upstream base
-    //   - and update the branch ref to point to this new commit.
+    //   - but don't update the branch ref yet (do it manually afterward)
     let new_commit_id = repo.commit(
-        Some(&branch_refname),
+        None,               // Don't update any reference yet
         &sig,               // author
         &sig,               // committer
         &message,
         &rebased_tree,
         &[&upstream_parent],
     )?;
+
+    // Now manually update the branch reference to point to our new squashed commit
+    let mut branch_ref = repo.find_reference(&branch_refname)?;
+    branch_ref.set_target(new_commit_id, "squash commits into single commit")?;
 
     // Optional: force-move HEAD if it was on this branch (useful in detached states etc.).
     if let Ok(mut head) = repo.head() {
@@ -82,6 +107,36 @@ fn main() -> Result<(), Error> {
 
     println!("Squashed {} onto {} as {}", branch_refname, upstream_spec, new_commit_id);
     Ok(())
+}
+
+/// Get the current branch name from the repository's HEAD.
+/// Returns the full reference name (e.g., "refs/heads/feature").
+fn get_current_branch_name(repo: &Repository) -> Result<String, Error> {
+    let head = repo.head()?;
+    
+    if let Some(name) = head.name() {
+        Ok(name.to_string())
+    } else {
+        // HEAD is detached, get the current commit and find which branch points to it
+        let head_commit = head.target().ok_or_else(|| {
+            Error::from_str("HEAD does not point to a valid commit")
+        })?;
+        
+        // Look for a branch that points to the same commit
+        let mut branches = repo.branches(Some(git2::BranchType::Local))?;
+        for branch_result in &mut branches {
+            let (branch, _) = branch_result?;
+            if let Some(target) = branch.get().target() {
+                if target == head_commit {
+                    if let Some(branch_name) = branch.get().name() {
+                        return Ok(branch_name.to_string());
+                    }
+                }
+            }
+        }
+        
+        Err(Error::from_str("Cannot determine current branch - HEAD is detached and no branch points to current commit"))
+    }
 }
 
 /// Build a human-friendly squash message from the rebased range.
