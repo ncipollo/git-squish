@@ -161,3 +161,68 @@ fn build_squash_message(
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::{change_to_branch, clone_test_repo, get_current_commit_message};
+    use std::fs;
+
+    /// Read the contents of a file in the repository.
+    fn read_file_contents(
+        repo_path: &std::path::PathBuf,
+        filename: &str,
+    ) -> Result<String, SquishError> {
+        let file_path = repo_path.join(filename);
+        fs::read_to_string(file_path).map_err(|e| SquishError::Other {
+            message: format!("Failed to read file {}: {}", filename, e),
+        })
+    }
+
+    #[test]
+    fn test_squish_topic_branch_workflow() {
+        // Clone the test repository
+        let (repo_path, _temp_dir) = clone_test_repo().expect("Failed to clone test repository");
+
+        // Checkout the topic branch
+        change_to_branch(&repo_path, "topic").expect("Failed to checkout topic branch");
+
+        // Get the current branch name (should be refs/heads/topic)
+        let repo = Repository::open(&repo_path).expect("Failed to open repository");
+        let branch_refname =
+            get_current_branch_name(&repo).expect("Failed to get current branch name");
+
+        // Squish the topic branch against main
+        let repo_path_str = repo_path.to_str().expect("Invalid repo path");
+        let result = squash_branch(repo_path_str, branch_refname, "main".to_string());
+
+        assert!(
+            result.is_ok(),
+            "Squash operation failed: {:?}",
+            result.err()
+        );
+
+        // Verify the log message is "Topic Branch Start"
+        let commit_message =
+            get_current_commit_message(&repo_path).expect("Failed to get commit message");
+
+        assert_eq!(
+            commit_message.trim(),
+            "Topic Branch Start",
+            "Expected commit message 'Topic Branch Start', got: '{}'",
+            commit_message
+        );
+
+        // Verify the contents of text.txt
+        let file_contents =
+            read_file_contents(&repo_path, "text.txt").expect("Failed to read text.txt");
+
+        let expected_contents = "Thu Aug 14 15:10:43 EDT 2025\nThu Aug 14 15:11:01 EDT 2025\nThu Aug 14 15:11:04 EDT 2025\nThu Aug 14 15:11:07 EDT 2025\nThu Aug 14 15:49:25 EDT 2025\n";
+
+        assert_eq!(
+            file_contents, expected_contents,
+            "text.txt contents don't match expected values.\nExpected:\n{}\nActual:\n{}",
+            expected_contents, file_contents
+        );
+    }
+}
