@@ -90,8 +90,8 @@ pub fn squash_branch(
     }
 
     Ok(format!(
-        "Squashed {} onto {} as {}",
-        branch_refname, upstream_spec, new_commit_id
+        "✅ Successfully rebased and updated {}.",
+        branch_refname
     ))
 }
 
