@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+---
+# Rust Development Guidelines
+
+## File Structure
+- Do not create `mod.rs` files. Instead, create a top level rust file matching the module name, then create a corresponding directory matching the module name.
+- Each module should be in its own directory with a clear purpose.
+- Use snake_case for file names.
+
+## Code Style
+- Run `cargo fmt` after writing or modifying Rust files to maintain consistent formatting.
+- Follow Rust's standard naming conventions:
+  - snake_case for variables, functions, and modules
+  - CamelCase for types and traits
+  - SCREAMING_SNAKE_CASE for constants
+
+## Module Organization
+- Keep modules focused and single-purpose
+- Use public interfaces to expose functionality
+- Prefer explicit imports over glob imports
+- Group related functionality into submodules
+
+## Error Handling
+- Use Result and Option types appropriately
+- Implement proper error types for your modules
+- Use the ? operator for error propagation when appropriate
+
+## Documentation
+- Document public APIs with /// comments
+- Include examples in documentation where helpful
+- Use // for internal comments
+
+## Testing
+- Write unit tests in the same file as the code being tested
+- Use integration tests for testing across module boundaries
+- Follow the Arrange-Act-Assert pattern in tests
