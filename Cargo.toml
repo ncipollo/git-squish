@@ -9,3 +9,4 @@ version = "0.1.0"
 
 [dependencies]
 git2 = "0.19"
+tempfile = "3.13"

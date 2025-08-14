@@ -3,6 +3,9 @@ use git2::{Commit, RebaseOptions, Repository};
 mod error;
 pub use error::SquishError;
 
+#[cfg(test)]
+pub mod test_utils;
+
 /// Squash a branch onto an upstream branch, replacing the branch history with a single commit.
 ///
 /// # Arguments
