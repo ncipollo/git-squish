@@ -217,12 +217,62 @@ mod tests {
         let file_contents =
             read_file_contents(&repo_path, "text.txt").expect("Failed to read text.txt");
 
-        let expected_contents = "Thu Aug 14 15:10:43 EDT 2025\nThu Aug 14 15:11:01 EDT 2025\nThu Aug 14 15:11:04 EDT 2025\nThu Aug 14 15:11:07 EDT 2025\nThu Aug 14 15:49:25 EDT 2025\n";
+        let expected_contents = "\
+Thu Aug 14 15:10:43 EDT 2025
+Thu Aug 14 15:11:01 EDT 2025
+Thu Aug 14 15:11:04 EDT 2025
+Thu Aug 14 15:11:07 EDT 2025
+Thu Aug 14 15:49:25 EDT 2025
+";
 
         assert_eq!(
             file_contents, expected_contents,
             "text.txt contents don't match expected values.\nExpected:\n{}\nActual:\n{}",
             expected_contents, file_contents
         );
+    }
+
+    #[test]
+    fn test_squish_conflict_branch_should_fail() {
+        // Clone the test repository
+        let (repo_path, _temp_dir) = clone_test_repo().expect("Failed to clone test repository");
+
+        // Checkout the conflict branch
+        change_to_branch(&repo_path, "conflict").expect("Failed to checkout conflict branch");
+
+        // Get the current branch name (should be refs/heads/conflict)
+        let repo = Repository::open(&repo_path).expect("Failed to open repository");
+        let branch_refname =
+            get_current_branch_name(&repo).expect("Failed to get current branch name");
+
+        // First, make sure we have the topic branch locally
+        change_to_branch(&repo_path, "topic").expect("Failed to ensure topic branch exists");
+        change_to_branch(&repo_path, "conflict").expect("Failed to return to conflict branch");
+
+        // Try to squish the conflict branch against topic - this should fail with a merge conflict
+        let repo_path_str = repo_path.to_str().expect("Invalid repo path");
+        let result = squash_branch(repo_path_str, branch_refname, "topic".to_string());
+
+        // Assert that the operation failed
+        assert!(
+            result.is_err(),
+            "Expected squash operation to fail due to merge conflict, but it succeeded"
+        );
+
+        // Verify that it's a conflict-related error
+        let error = result.unwrap_err();
+        match error {
+            SquishError::Git { message } => {
+                assert!(
+                    message.contains("conflict"),
+                    "Expected conflict-related error message, got: '{}'",
+                    message
+                );
+            }
+            _ => panic!(
+                "Expected SquishError::Git with conflict message, got: {:?}",
+                error
+            ),
+        }
     }
 }
