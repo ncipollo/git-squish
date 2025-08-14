@@ -3,7 +3,7 @@ use git2::Repository;
 
 fn main() {
     if let Err(e) = run() {
-        eprintln!("💀 Error: {}", e);
+        eprintln!("💀 Error: {e}");
         std::process::exit(1);
     }
 }
@@ -40,6 +40,6 @@ fn run() -> Result<(), SquishError> {
 
     // Perform the squash operation
     let result = git_squish::squash_branch(repo_path, branch_refname, upstream_spec)?;
-    println!("{}", result);
+    println!("{result}");
     Ok(())
 }

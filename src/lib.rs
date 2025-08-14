@@ -93,8 +93,7 @@ pub fn squash_branch(
     }
 
     Ok(format!(
-        "✅ Successfully rebased and updated {}.",
-        branch_refname
+        "✅ Successfully rebased and updated {branch_refname}."
     ))
 }
 

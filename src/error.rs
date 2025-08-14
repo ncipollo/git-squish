@@ -13,8 +13,8 @@ pub enum SquishError {
 impl fmt::Display for SquishError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SquishError::Git { message } => write!(f, "{}", message),
-            SquishError::Other { message } => write!(f, "{}", message),
+            SquishError::Git { message } => write!(f, "{message}"),
+            SquishError::Other { message } => write!(f, "{message}"),
         }
     }
 }
