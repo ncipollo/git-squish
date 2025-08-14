@@ -1,8 +1,11 @@
 [package]
 name = "git-squish"
-version = "0.1.0"
+description = "A simply git addon which will perform a non-interactive rebase and squash the branch history into a single commit."
+
 edition = "2024"
-publish = ["cargo-store"]
+license = "MIT"
+readme = "README.md"
+version = "0.1.0"
 
 [dependencies]
 git2 = "0.19"
