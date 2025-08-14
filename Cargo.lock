@@ -75,7 +75,7 @@ dependencies = [
 
 [[package]]
 name = "git-squish"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "git2",
  "tempfile",
