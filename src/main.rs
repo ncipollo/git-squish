@@ -1,6 +1,14 @@
-use git2::{Error, Repository};
+use git_squish::SquishError;
+use git2::Repository;
 
-fn main() -> Result<(), Error> {
+fn main() {
+    if let Err(e) = run() {
+        eprintln!("💀 Error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), SquishError> {
     // args: [branch-refname] <upstream-spec>
     // ex:   refs/heads/feature  origin/main
     // ex:   origin/main         (uses current branch)
@@ -21,11 +29,11 @@ fn main() -> Result<(), Error> {
             (remaining_args[0].clone(), remaining_args[1].clone())
         }
         _ => {
-            eprintln!("Usage: git-squish [branch-refname] <upstream-spec>");
+            eprintln!("Usage: git squish [branch-refname] <upstream-spec>");
             eprintln!("  If branch-refname is omitted, uses the current branch");
             eprintln!("Examples:");
-            eprintln!("  git-squish refs/heads/feature origin/main");
-            eprintln!("  git-squish origin/main  # uses current branch");
+            eprintln!("  git squish topic main");
+            eprintln!("  git squish main  # uses current branch");
             std::process::exit(1);
         }
     };

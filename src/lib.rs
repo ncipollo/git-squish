@@ -1,4 +1,7 @@
-use git2::{Commit, Error, RebaseOptions, Repository};
+use git2::{Commit, RebaseOptions, Repository};
+
+mod error;
+pub use error::SquishError;
 
 /// Squash a branch onto an upstream branch, replacing the branch history with a single commit.
 ///
@@ -8,12 +11,12 @@ use git2::{Commit, Error, RebaseOptions, Repository};
 /// * `upstream_spec` - The upstream to rebase onto (e.g., "main" or "origin/main")
 ///
 /// # Returns
-/// A success message on completion, or an Error if the operation fails.
+/// A success message on completion, or a SquishError if the operation fails.
 pub fn squash_branch(
     repo_path: &str,
     branch_refname: String,
     upstream_spec: String,
-) -> Result<String, Error> {
+) -> Result<String, SquishError> {
     let repo = Repository::open(repo_path)?;
 
     // Resolve the branch head to an AnnotatedCommit.
@@ -94,16 +97,16 @@ pub fn squash_branch(
 
 /// Get the current branch name from the repository's HEAD.
 /// Returns the full reference name (e.g., "refs/heads/feature").
-pub fn get_current_branch_name(repo: &Repository) -> Result<String, Error> {
+pub fn get_current_branch_name(repo: &Repository) -> Result<String, SquishError> {
     let head = repo.head()?;
 
     if let Some(name) = head.name() {
         Ok(name.to_string())
     } else {
         // HEAD is detached, get the current commit and find which branch points to it
-        let head_commit = head
-            .target()
-            .ok_or_else(|| Error::from_str("HEAD does not point to a valid commit"))?;
+        let head_commit = head.target().ok_or_else(|| SquishError::Other {
+            message: "HEAD does not point to a valid commit".to_string(),
+        })?;
 
         // Look for a branch that points to the same commit
         let mut branches = repo.branches(Some(git2::BranchType::Local))?;
@@ -118,9 +121,9 @@ pub fn get_current_branch_name(repo: &Repository) -> Result<String, Error> {
             }
         }
 
-        Err(Error::from_str(
-            "Cannot determine current branch - HEAD is detached and no branch points to current commit",
-        ))
+        Err(SquishError::Other {
+            message: "Cannot determine current branch - HEAD is detached and no branch points to current commit".to_string(),
+        })
     }
 }
 
@@ -130,7 +133,7 @@ fn build_squash_message(
     repo: &Repository,
     upstream_parent: &Commit,
     rebased_tip: &Commit,
-) -> Result<String, Error> {
+) -> Result<String, SquishError> {
     // Walk from rebased_tip back until we hit upstream_parent.
     let mut revwalk = repo.revwalk()?;
     revwalk.push(rebased_tip.id())?;
