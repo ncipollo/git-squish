@@ -26,12 +26,29 @@ pub fn clone_test_repo() -> Result<(PathBuf, TempDir), SquishError> {
     let repo_path = temp_dir.path().to_path_buf();
     let test_repo_url = "https://github.com/ncipollo/test-squish";
 
-    Repository::clone(test_repo_url, &repo_path).map_err(|e| SquishError::Other {
+    let repo = Repository::clone(test_repo_url, &repo_path).map_err(|e| SquishError::Other {
         message: format!(
             "Failed to clone test repository from {}: {}",
             test_repo_url, e
         ),
     })?;
+
+    // Configure Git user for testing to avoid CI failures
+    let mut config = repo.config().map_err(|e| SquishError::Other {
+        message: format!("Failed to get repository config: {}", e),
+    })?;
+
+    config
+        .set_str("user.name", "Test User")
+        .map_err(|e| SquishError::Other {
+            message: format!("Failed to set user.name: {}", e),
+        })?;
+
+    config
+        .set_str("user.email", "test@example.com")
+        .map_err(|e| SquishError::Other {
+            message: format!("Failed to set user.email: {}", e),
+        })?;
 
     Ok((repo_path, temp_dir))
 }
