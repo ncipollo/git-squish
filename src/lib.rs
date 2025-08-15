@@ -69,9 +69,15 @@ pub fn squash_branch(
     //     of included commits (optional, tweak as you like).
     let message = build_squash_message(&repo, &upstream_parent, &rebased_tip)?;
 
-    // Get git config and configuration for optional GPG signing
+    // Get git config and check if GPG signing is explicitly enabled
     let git_config = Config::open_default()?;
-    let user_sign = UserSign::from_config(&repo, &git_config).ok();
+    let gpg_sign_enabled = git_config.get_bool("commit.gpgsign").unwrap_or(false);
+
+    let user_sign = if gpg_sign_enabled {
+        UserSign::from_config(&repo, &git_config).ok()
+    } else {
+        None
+    };
     let signing = user_sign.as_ref().map(|sign| sign as &dyn Sign);
 
     // Create a *new* commit that has:
