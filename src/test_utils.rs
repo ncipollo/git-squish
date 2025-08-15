@@ -50,6 +50,13 @@ pub fn clone_test_repo() -> Result<(PathBuf, TempDir), SquishError> {
             message: format!("Failed to set user.email: {}", e),
         })?;
 
+    // Disable GPG signing for tests to avoid CI failures
+    config
+        .set_bool("commit.gpgsign", false)
+        .map_err(|e| SquishError::Other {
+            message: format!("Failed to disable GPG signing: {}", e),
+        })?;
+
     Ok((repo_path, temp_dir))
 }
 
