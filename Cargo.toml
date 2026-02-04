@@ -9,6 +9,6 @@ repository = "https://github.com/ncipollo/git-squish"
 version = "0.1.4"
 
 [dependencies]
-git2 = "0.19"
+git2 = "0.20"
 git2-ext = "0.6.0"
 tempfile = "3.13"
